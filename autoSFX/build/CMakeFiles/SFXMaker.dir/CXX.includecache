@@ -1,0 +1,30 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+../include/SFXMaker.h
+string
+-
+vector
+-
+
+/workspaces/autoSFX/autoSFX/src/SFXMaker.cpp
+SFXMaker.h
+/workspaces/autoSFX/autoSFX/src/SFXMaker.h
+iostream
+-
+fstream
+-
+filesystem
+-
+cstdlib
+-
+
+/workspaces/autoSFX/autoSFX/src/main.cpp
+SFXMaker.h
+/workspaces/autoSFX/autoSFX/src/SFXMaker.h
+

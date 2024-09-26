@@ -1,0 +1,3 @@
+/workspaces/autoSFX/autoSFX/build/CMakeFiles/rebuild_cache.dir
+/workspaces/autoSFX/autoSFX/build/CMakeFiles/edit_cache.dir
+/workspaces/autoSFX/autoSFX/build/CMakeFiles/SFXMaker.dir
