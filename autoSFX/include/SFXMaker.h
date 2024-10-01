@@ -4,12 +4,19 @@
 #include <string>
 #include <vector>
 
-class SFXMaker {
-public:
-    void promptUser();
-    void createSFX(const std::vector<std::string>& filePaths, const std::string& outputPath);
-private:
-    void embedFiles(const std::vector<std::string>& filePaths, const std::string& outputPath);
+struct FileEntry {
+    std::string filename;
+    std::vector<char> data;
 };
 
-#endif
+class SFXMaker {
+public:
+    void createSFX(const std::vector<FileEntry>& files, const std::string& outputExe);
+    void extractAndRun();
+    
+private:
+    void writeFiles(std::ostream& out, const std::vector<FileEntry>& files);
+    void readFiles(std::istream& in);
+};
+
+#endif 
