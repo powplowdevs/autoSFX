@@ -1,14 +1,10 @@
 cmake_minimum_required(VERSION 3.10)
 
-# Project Name
-project(SFXMaker)
+project(SFXGenerator VERSION 1.0)
 
-# Specify C++ standard
-set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-# Include directories
 include_directories(include)
 
-# Add the executable
-add_executable(SFXMaker src/main.cpp src/SFXMaker.cpp)
+add_executable(SFXGenerator src/main.cpp)
