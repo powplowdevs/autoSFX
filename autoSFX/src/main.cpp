@@ -1,5 +1,4 @@
 #include "AutoSFXHeader.h"
-
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -17,25 +16,7 @@ std::vector<char> ReadFile(const std::string& FilePath) {
     return std::vector<char>((std::istreambuf_iterator<char>(File)), std::istreambuf_iterator<char>());
 }
 
-//Create a hidden temp dir
-std::string CreateHiddenTempDir() {
-    char TempPath[MAX_PATH];
-    GetTempPathA(MAX_PATH, TempPath);
-    std::string TempDir = std::string(TempPath) + "HiddenSFX\\";
-
-    if (!CreateDirectoryA(TempDir.c_str(), NULL) && GetLastError() != ERROR_ALREADY_EXISTS) {
-        std::cerr << "Error: Could not create temporary directory." << std::endl;
-        exit(1);
-    }
-
-    SetFileAttributesA(TempDir.c_str(), FILE_ATTRIBUTE_HIDDEN);
-    
-    std::cout << "Hidden temporary directory created at: " << TempDir << std::endl;
-
-    return TempDir;
-}
-
-//Edit escape paths
+//Escape paths for Windows
 std::string EscapePath(const std::string& Path) {
     std::string EscapedPath = Path;
     size_t Pos = 0;
@@ -67,45 +48,54 @@ int main() {
         FileData.push_back(ReadFile(Path));
     }
 
-    //Create hidden temp dir
-    std::string TempDir = CreateHiddenTempDir();
-
-    //Generate SFXtemplate
+    //Generate SFXtemplate with dynamic temp dir creation
     std::ofstream SfxTemplate("SFXtemplate.cpp");
-    SfxTemplate << "#include <iostream>\n#include <fstream>\n#include <vector>\n#include <windows.h>\n\n";
+    SfxTemplate << "#include <iostream>\n";
+    SfxTemplate << "#include <fstream>\n";
+    SfxTemplate << "#include <vector>\n";
+    SfxTemplate << "#include <windows.h>\n\n";
+
+    SfxTemplate << "//Func to dynamically create hidden temp dir\n";
+    SfxTemplate << "std::string CreateHiddenTempDir() {\n";
+    SfxTemplate << "    char TempPath[MAX_PATH];\n";
+    SfxTemplate << "    GetTempPathA(MAX_PATH, TempPath);\n";
+    SfxTemplate << "    std::string TempDir = std::string(TempPath) + \"autoSFX\\\\\";\n";
+    SfxTemplate << "    if (!CreateDirectoryA(TempDir.c_str(), NULL) && GetLastError() != ERROR_ALREADY_EXISTS) {\n";
+    SfxTemplate << "        std::cerr << \"Error: Could not create temporary directory.\" << std::endl;\n";
+    SfxTemplate << "        exit(1);\n";
+    SfxTemplate << "    }\n";
+    SfxTemplate << "    SetFileAttributesA(TempDir.c_str(), FILE_ATTRIBUTE_HIDDEN);\n";
+    SfxTemplate << "    return TempDir;\n";
+    SfxTemplate << "}\n\n";
+
     SfxTemplate << "int main() {\n";
+    SfxTemplate << "    //Create hidden temp dir\n";
+    SfxTemplate << "    std::string TempDir = CreateHiddenTempDir();\n\n";
 
     for (size_t i = 0; i < FileData.size(); ++i) {
-        SfxTemplate << "    // File " << i + 1 << "\n";
+        SfxTemplate << "    //File" << i + 1 << "\n";
         SfxTemplate << "    const char File" << i + 1 << "[] = {";
         for (size_t j = 0; j < FileData[i].size(); ++j) {
             SfxTemplate << static_cast<int>(FileData[i][j]) << ",";
         }
         SfxTemplate << "};\n";
-        SfxTemplate << "    std::ofstream OutFile" << i + 1 << "(\"" << EscapePath(TempDir + "output_file_" + std::to_string(i + 1) + FileExtensions[i]) << "\", std::ios::binary);\n";
+        SfxTemplate << "    std::ofstream OutFile" << i + 1 << "(TempDir + \"output_file_" << i + 1 << FileExtensions[i] << "\", std::ios::binary);\n";
         SfxTemplate << "    OutFile" << i + 1 << ".write(File" << i + 1 << ", sizeof(File" << i + 1 << "));\n";
         SfxTemplate << "    OutFile" << i + 1 << ".close();\n\n";
     }
 
     for (size_t i = 0; i < FileData.size(); ++i) {
-        SfxTemplate << "    ShellExecute(NULL, \"open\", \"" << EscapePath(TempDir + "output_file_" + std::to_string(i + 1) + FileExtensions[i]) << "\", NULL, NULL, SW_SHOWNORMAL);\n";
+        SfxTemplate << "    ShellExecute(NULL, \"open\", (TempDir + \"output_file_" << i + 1 << FileExtensions[i] << "\").c_str(), NULL, NULL, SW_SHOWNORMAL);\n";
     }
 
     SfxTemplate << "    return 0;\n";
     SfxTemplate << "}\n";
     SfxTemplate.close();
 
-    //Generate CMakeLists
-    std::ofstream CMakeFile("CMakeLists.txt");
-    CMakeFile << "cmake_minimum_required(VERSION 3.10)\n";
-    CMakeFile << "project(GeneratedSFX)\n";
-    CMakeFile << "add_executable(generated_sfx SFXtemplate.cpp)\n";
-    CMakeFile.close();
-
     //Compile
-    std::string BuildCommand = "cmake . && cmake --build .";
+    std::string BuildCommand = "g++ -static -static-libgcc -static-libstdc++ SFXtemplate.cpp -o final_sfx.exe -lpthread -lShell32";
     system(BuildCommand.c_str());
 
-    std::cout << "SFX executable generated: generated_sfx.exe\n";
+    std::cout << "SFX executable generated: final_sfx.exe\n";
     return 0;
 }
