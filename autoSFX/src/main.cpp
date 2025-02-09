@@ -7,167 +7,148 @@
 #include <filesystem>
 #include <csignal>
 
-using namespace std;
-
-//~~CLI colors~~
-const string RESET = "\033[0m";
-//Normal colors
-const string BLACK = "\033[30m";
-const string RED = "\033[31m";
-const string GREEN = "\033[32m";
-const string YELLOW = "\033[33m";
-const string BLUE = "\033[34m";
-const string MAGENTA = "\033[35m";
-const string CYAN = "\033[36m";
-const string WHITE = "\033[37m";
-//Bold colors
-const string BOLD_BLACK = "\033[1;30m";
-const string BOLD_RED = "\033[1;31m";
-const string BOLD_GREEN = "\033[1;32m";
-const string BOLD_YELLOW = "\033[1;33m";
-const string BOLD_BLUE = "\033[1;34m";
-const string BOLD_MAGENTA = "\033[1;35m";
-const string BOLD_CYAN = "\033[1;36m";
-const string BOLD_WHITE = "\033[1;37m";
-
-//~~CLI art helper functions~~
-//Display the banner
+// ~~CLI art helper functions~~
+// Display the banner
 void displayBanner(){
-    cout << BLUE << "=========================================" << RESET << endl;
-    cout << BLUE << "       AUTO SFX WIZARD - BETA VERSION    " << RESET << endl;
-    cout << BLUE << "=========================================" << RESET << endl;
-    cout << endl;
+    std::cout << "=========================================" << std::endl;
+    std::cout << "       AUTO SFX WIZARD - BETA VERSION    " << std::endl;
+    std::cout << "=========================================" << std::endl;
+    std::cout << std::endl;
 }
 
-//Reset terminal
+// Reset terminal
 void handleInterrupt(int signal){
-    cout << "\033[37m";
-    cout << "Program interrupted. Exiting gracefully..." << endl;
+    std::cout << "Program interrupted. Exiting..." << std::endl;
     exit(0);
 }
 
-//~~SFX helper functions~~
-//Read file data as bytes
-vector<char> readFile(const string& filePath){
-    ifstream file(filePath, ios::binary);
+// ~~SFX helper functions~~
+// Read file data as bytes
+std::vector<char> readFile(const std::string& filePath){
+    std::ifstream file(filePath, std::ios::binary);
     if (!file){
-        cerr << RED << "Error: Could not open file " << filePath << RESET << endl;
+        std::cerr << "Error: Could not open file " << filePath << std::endl;
         exit(1);
     }
-    return vector<char>((istreambuf_iterator<char>(file)), istreambuf_iterator<char>());
+    return std::vector<char>((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
 }
 
-//Escape paths for Windows
-string escapePath(const string& path){
-    string escapedPath = path;
-    size_t pos = 0;
-    while ((pos = escapedPath.find("\\", pos)) != string::npos){
-        escapedPath.replace(pos, 1, "\\\\");
-        pos += 2;
-    }
-    return escapedPath;
-}
+// Create an SFX 
+void createSFX(const std::string& fileName, const std::vector<std::string>& filePaths, const std::vector<std::string>& fileExtensions){
+    std::cout << "Creating SFX " << fileName << " with " << filePaths.size() << " files..." << std::endl;
 
-//Create an SFX 
-void createSFX(const string& fileName, const vector<string>& filePaths, const vector<string>& fileExtensions){
-    cout << "Creating SFX " << fileName << " with " << filePaths.size() << " files...";
-
-    //Collect byte data
-    vector<vector<char>> fileData;
+    // Collect byte data
+    std::vector<std::vector<char>> fileData;
     for (const auto& path : filePaths){
         fileData.push_back(readFile(path));
     }
 
-    //Generate SFX template
-    ofstream sfxTemplate("SFXtemplate.cpp");
+    // Generate SFX template
+    std::ofstream sfxTemplate("SFXtemplate.cpp");
     sfxTemplate << "#include <iostream>\n";
     sfxTemplate << "#include <fstream>\n";
     sfxTemplate << "#include <vector>\n";
     sfxTemplate << "#include <windows.h>\n\n";
     sfxTemplate << "using namespace std;\n\n";
 
-    //Function to create hidden temp dir
-    sfxTemplate << "string createHiddenTempDir(){\n";
+    // Function to create hidden temp dir
+    sfxTemplate << "std::wstring createHiddenTempDir(){\n";
     sfxTemplate << "    char tempPath[MAX_PATH];\n";
     sfxTemplate << "    GetTempPathA(MAX_PATH, tempPath);\n";
-    sfxTemplate << "    string tempDir = string(tempPath) + \"autoSFX\\\\\";\n";
-    sfxTemplate << "    if (!CreateDirectoryA(tempDir.c_str(), NULL) && GetLastError() != ERROR_ALREADY_EXISTS){\n";
-    sfxTemplate << "        cerr << \"Error: Could not create temporary directory.\" << endl;\n";
+    sfxTemplate << "    std::wstring tempDir = std::wstring(tempPath, tempPath + strlen(tempPath)) + L\"autoSFX\\\\\";\n";
+    sfxTemplate << "    if (!CreateDirectoryW(tempDir.c_str(), NULL) && GetLastError() != ERROR_ALREADY_EXISTS){\n";
+    sfxTemplate << "        std::wcerr << L\"Error: Could not create temporary directory.\" << std::endl;\n";
     sfxTemplate << "        exit(1);\n";
     sfxTemplate << "    }\n";
-    sfxTemplate << "    SetFileAttributesA(tempDir.c_str(), FILE_ATTRIBUTE_HIDDEN);\n";
+    sfxTemplate << "    SetFileAttributesW(tempDir.c_str(), FILE_ATTRIBUTE_HIDDEN);\n";
     sfxTemplate << "    return tempDir;\n";
     sfxTemplate << "}\n\n";
 
-    //Start main function
+    // Start main function
     sfxTemplate << "int main(){\n";
-    sfxTemplate << "    string tempDir = createHiddenTempDir();\n\n";
+    sfxTemplate << "    std::wstring tempDir = createHiddenTempDir();\n    std::string filePath;\n\n";
 
-    //Write file data
+    // Write file data
     for (size_t i = 0; i < fileData.size(); ++i){
-        sfxTemplate << "    const char file" << i + 1 << "[] ={";
+        sfxTemplate << "    const char file" << i + 1 << "[] = {";
         for (size_t j = 0; j < fileData[i].size(); ++j){
-            sfxTemplate << static_cast<int>(fileData[i][j]) << ",";
+            sfxTemplate << static_cast<int>(fileData[i][j]);
+            if (j != fileData[i].size() - 1) {
+                sfxTemplate << ",";
+            }
         }
         sfxTemplate << "};\n";
-        sfxTemplate << "    ofstream outFile" << i + 1 << "(tempDir + \"output_file_" << i + 1 << fileExtensions[i] << "\", ios::binary);\n";
-        sfxTemplate << "    outFile" << i + 1 << ".write(file" << i + 1 << ", sizeof(file" << i + 1 << "));\n";
-        sfxTemplate << "    outFile" << i + 1 << ".close();\n\n";
+        
+        sfxTemplate << "    filePath = std::string(tempDir.begin(), tempDir.end()) + \"output_file_" << i + 1 << fileExtensions[i] << "\";\n";
+        sfxTemplate << "    std::ofstream outFile" << i << "(filePath, std::ios::binary);\n";
+        sfxTemplate << "    outFile" << i << ".write(file" << i + 1 << ", sizeof(file" << i + 1 << "));\n";
+        sfxTemplate << "    outFile" << i << ".close();\n\n";
     }
 
+    
+    sfxTemplate << "    HINSTANCE result;";
     for (size_t i = 0; i < fileData.size(); ++i){
-        sfxTemplate << "    ShellExecute(NULL, \"open\", (tempDir + \"output_file_" << i + 1 << fileExtensions[i] << "\").c_str(), NULL, NULL, SW_SHOWNORMAL);\n";
+        sfxTemplate << "    result = ShellExecuteW(NULL, L\"open\", (tempDir + L\"output_file_" << i + 1 << fileExtensions[i];
+        sfxTemplate << "\").c_str(), NULL, NULL, SW_SHOWNORMAL);\n";
+        sfxTemplate << "    if ((intptr_t)result <= 32) {\n";
+        sfxTemplate << "        std::wcerr << L\"Error opening file: \" << (tempDir + L\"output_file_" << i + 1 << fileExtensions[i];
+        sfxTemplate << "\") << std::endl;\n";
+        sfxTemplate << "    }\n";
+        sfxTemplate << "    else {\n";
+        sfxTemplate << "        std::wcout << L\"Successfully opened: \" << (tempDir + L\"output_file_" << i + 1 << fileExtensions[i];
+        sfxTemplate << "\") << std::endl;\n";
+        sfxTemplate << "    }\n";
     }
-
+    
     sfxTemplate << "    return 0;\n";
     sfxTemplate << "}\n";
     sfxTemplate.close();
 
-    //Compile command
-    string buildCommand = "g++ -static -static-libgcc -static-libstdc++ SFXtemplate.cpp -o " + fileName + " -lpthread -lShell32";
+    // Compile command
+    std::string buildCommand = "g++ -static -static-libgcc -static-libstdc++ SFXtemplate.cpp -o " + fileName + ".exe -lpthread -lShell32";
     system(buildCommand.c_str());
 
-    cout << GREEN << "SFX executable generated: " << fileName << RESET << endl;
+    std::cout << "SFX executable generated: " << fileName << std::endl;
 }
 
-//Main
+// Main
 int main(){
-    signal(SIGINT, handleInterrupt); //Handle keybord interrupt
+    signal(SIGINT, handleInterrupt); // Handle keyboard interrupt
     displayBanner();
-    cout << YELLOW << "Welcome to the Auto SFX Wizard! Created by Powplowdevs." << RESET << endl;
+    std::cout << "Welcome to the Auto SFX Wizard! Created by Powplowdevs." << std::endl;
 
     int choice = -1;
     
     while (choice != 0)
    {
-        cout << YELLOW << "Type '1' to start creating an SFX or '0' to exit." << RESET << endl;
-        cin >> choice;
+        std::cout << "Type '1' to start creating an SFX or '0' to exit: ";
+        std::cin >> choice;
 
         if (choice == 1){
             int numFiles;
-            cout << YELLOW << "Enter the number of files to be in the SFX: " << RESET;
-            cin >> numFiles;
+            std::cout << "Enter the number of files to be in the SFX: ";
+            std::cin >> numFiles;
 
-            vector<string> filePaths(numFiles);
-            vector<string> fileExtensions(numFiles);
+            std::vector<std::string> filePaths(numFiles);
+            std::vector<std::string> fileExtensions(numFiles);
 
             for (int i = 0; i < numFiles; ++i){
-                cout << YELLOW << "Enter file path " << i + 1 << ": " << RESET;
-                cin >> filePaths[i];
-                fileExtensions[i] = filesystem::path(filePaths[i]).extension().string();
+                std::cout << "Enter file path " << i + 1 << ": ";
+                std::cin >> filePaths[i];
+                fileExtensions[i] = std::filesystem::path(filePaths[i]).extension().string();
             }
 
-            string fileName;
-            cout << YELLOW << "Enter output file name (e.g., final_sfx.exe): " << RESET;
-            cin >> fileName;
+            std::string fileName;
+            std::cout << "Enter output file name, don't add extensions (e.g. final_sfx): ";
+            std::cin >> fileName;
 
             createSFX(fileName, filePaths, fileExtensions);
         } 
         else if (choice == 0){
-            cout << "Quiting..., goodbye!";
+            std::cout << "Quitting..., goodbye!" << std::endl;
         }
         else{
-            cout << WHITE << "Other features not yet implemented..." << RESET << endl;
+            std::cout << "Other features not yet implemented..." << std::endl;
         }
     }
 

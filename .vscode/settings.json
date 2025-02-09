@@ -70,7 +70,8 @@
         "xmemory": "cpp",
         "xstring": "cpp",
         "xtr1common": "cpp",
-        "xutility": "cpp"
+        "xutility": "cpp",
+        "csignal": "cpp"
     },
     "cmake.sourceDirectory": "C:/Users/kalid.DESKTOP-TUS9USS/Documents/GitHub/autoSFX/autoSFX"
 }

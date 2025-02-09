@@ -1,4 +1,4 @@
-# Install script for directory: C:/Users/kalid.DESKTOP-TUS9USS/Documents/GitHub/autoSFX/autoSFX
+# Install script for directory: C:/Users/kalid.DESKTOP-TUS9USS.000/OneDrive/Documents/GitHub/autoSFX/autoSFX
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -47,6 +47,6 @@ endif()
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-  file(WRITE "C:/Users/kalid.DESKTOP-TUS9USS/Documents/GitHub/autoSFX/autoSFX/build/${CMAKE_INSTALL_MANIFEST}"
+  file(WRITE "C:/Users/kalid.DESKTOP-TUS9USS.000/OneDrive/Documents/GitHub/autoSFX/autoSFX/build/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")
 endif()
