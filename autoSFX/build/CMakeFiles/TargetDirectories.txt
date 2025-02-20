@@ -1,3 +1,0 @@
-C:/Users/kalid.DESKTOP-TUS9USS.000/OneDrive/Documents/GitHub/autoSFX/autoSFX/build/CMakeFiles/generated_sfx.dir
-C:/Users/kalid.DESKTOP-TUS9USS.000/OneDrive/Documents/GitHub/autoSFX/autoSFX/build/CMakeFiles/ALL_BUILD.dir
-C:/Users/kalid.DESKTOP-TUS9USS.000/OneDrive/Documents/GitHub/autoSFX/autoSFX/build/CMakeFiles/ZERO_CHECK.dir
