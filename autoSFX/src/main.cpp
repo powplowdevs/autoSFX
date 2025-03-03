@@ -5,6 +5,9 @@
 #include <windows.h>
 #include <filesystem>
 #include <csignal>
+#include <set>
+
+bool stopped = false;
 
 // ~~CLI art helper functions~~
 // Display the banner
@@ -18,7 +21,9 @@ void displayBanner(){
 // Interrupts
 void handleInterrupt(int signal){
     std::cout << "Program interrupted. Exiting..." << std::endl;
-    exit(0);
+    std::cout.flush();
+    stopped = true;
+    std::exit(0);
 }
 
 // ~~SFX helper functions~~
@@ -47,6 +52,8 @@ void createSFX(const std::string& fileName, const std::vector<std::string>& file
     sfxTemplate << "#include <iostream>\n";
     sfxTemplate << "#include <fstream>\n";
     sfxTemplate << "#include <vector>\n";
+    sfxTemplate << "#include <chrono>\n";
+    sfxTemplate << "#include <thread>\n";
     sfxTemplate << "#include <windows.h>\n\n";
     sfxTemplate << "using namespace std;\n\n";
 
@@ -69,10 +76,10 @@ void createSFX(const std::string& fileName, const std::vector<std::string>& file
 
     // Write file data
     for (size_t i = 0; i < fileData.size(); ++i){
-        sfxTemplate << "    const char file" << i + 1 << "[] = {";
+        sfxTemplate << "    const char file" << i + 1 << "[] ={";
         for (size_t j = 0; j < fileData[i].size(); ++j){
             sfxTemplate << static_cast<int>(fileData[i][j]);
-            if (j != fileData[i].size() - 1) {
+            if (j != fileData[i].size() - 1){
                 sfxTemplate << ",";
             }
         }
@@ -88,20 +95,15 @@ void createSFX(const std::string& fileName, const std::vector<std::string>& file
     
     // loops for each file
     for (size_t i = 0; i < fileData.size(); ++i){
-        sfxTemplate << "    for(int i = 0; i < " << runCounts[i] << "; ++i) {\n";
-        sfxTemplate << "        result = ShellExecuteW(NULL, L\"open\", (tempDir + L\"output_file_" << i + 1 << fileExtensions[i];
-        sfxTemplate << "\").c_str(), NULL, NULL, SW_SHOWNORMAL);\n";
-        sfxTemplate << "        if ((intptr_t)result <= 32) {\n";
-        sfxTemplate << "            std::wcerr << L\"Error opening file: \" << (tempDir + L\"output_file_" << i + 1 << fileExtensions[i];
-        sfxTemplate << "\") << std::endl;\n";
-        sfxTemplate << "        }\n";
-        sfxTemplate << "        else {\n";
-        sfxTemplate << "            std::wcout << L\"Successfully opened: \" << (tempDir + L\"output_file_" << i + 1 << fileExtensions[i];
-        sfxTemplate << "\") << std::endl;\n";
-        sfxTemplate << "        }\n";
+        sfxTemplate << "    for(int i = 0; i < " << runCounts[i] << "; ++i){\n";
+        sfxTemplate << "        std::wstring command = L\"cmd.exe /C start \" + tempDir + L\"output_file_" << i + 1 << fileExtensions[i] << "\";\n";
+        sfxTemplate << "        STARTUPINFOW si = { sizeof(si) };\n";
+        sfxTemplate << "        PROCESS_INFORMATION pi;\n";
+        sfxTemplate << "        CreateProcessW(NULL, (LPWSTR)command.c_str(), NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi);\n";
         sfxTemplate << "    }\n";
     }
-
+    
+    
     sfxTemplate << "    return 0;\n";
     sfxTemplate << "}\n";
     sfxTemplate.close();
@@ -121,8 +123,7 @@ int main(){
 
     int choice = -1;
     
-    while (choice != 0)
-   {
+    while (choice != 0 && !stopped){
         std::cout << "Type '1' to start creating an SFX or '0' to exit: ";
         std::cin >> choice;
 
@@ -131,17 +132,50 @@ int main(){
             std::cout << "Enter the number of files to be in the SFX: ";
             std::cin >> numFiles;
 
-            std::vector<std::string> filePaths(numFiles);
-            std::vector<std::string> fileExtensions(numFiles);
-            std::vector<int> runCounts(numFiles);
+            std::vector<std::string> filePaths;
+            std::vector<std::string> fileExtensions;
+            std::vector<int> runCounts;
 
             for (int i = 0; i < numFiles; ++i){
-                std::cout << "Enter file path " << i + 1 << ": ";
-                std::cin >> filePaths[i];
-                fileExtensions[i] = std::filesystem::path(filePaths[i]).extension().string();
+                std::string filePath;
+                while (true){
+                    std::cout << "Enter file path " << i + 1 << ": ";
+                    std::cin >> filePath;
 
+                    // Check dupe
+                    bool isDuplicate = false;
+                    for (const std::string& existingPath : filePaths){
+                        if (existingPath == filePath){
+                            isDuplicate = true;
+                            break;
+                        }
+                    }
+
+                    if (isDuplicate){
+                        std::cout << "Warning: That path is a duplicate. Would you still like to add it? (y/n): ";
+                        char userChoice;
+                        std::cin >> userChoice;
+
+                        if (userChoice == 'y' || userChoice == 'Y'){
+                            break;
+                        } 
+                        else{
+                            std::cout << "Please enter a new file path.\n";
+                            continue;
+                        }
+                    } 
+                    else{
+                        break;
+                    }
+                }
+
+                filePaths.push_back(filePath);
+                fileExtensions.push_back(std::filesystem::path(filePath).extension().string());
+
+                int runCount;
                 std::cout << "Enter number of times to run file " << i + 1 << ": ";
-                std::cin >> runCounts[i];
+                std::cin >> runCount;
+                runCounts.push_back(runCount);
             }
 
             std::string fileName;
@@ -154,7 +188,9 @@ int main(){
             std::cout << "Quitting..., goodbye!" << std::endl;
         }
         else{
-            std::cout << "Other features not yet implemented..." << std::endl;
+            
         }
     }
+
+    return 0;
 }
