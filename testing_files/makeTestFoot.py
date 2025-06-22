@@ -18,25 +18,32 @@ file_table = []
 current_offset = stub_size  # Important: start after stub
 packed_data = b""
 
+curIndex = 0
+
 for file_path in FILES:
     with open(file_path, "rb") as f:
         data = f.read()
     
     size = len(data)
     name = os.path.basename(file_path)
+    runCount = 1
     
     file_entry = {
         "name": name,
         "relativePath": name,  # simple — write to current dir
         "offset": current_offset,
         "size": size,
-        "compressed": False
+        "compressed": False,
+        "runHidden": False,
+        "runCount": runCount,
+        "runIndex": curIndex
     }
-    
+
     file_table.append(file_entry)
     
     packed_data += data
     current_offset += size
+    curIndex += 1
 
 # Encode JSON
 file_table_json = json.dumps(file_table, indent=4).encode("utf-8")
