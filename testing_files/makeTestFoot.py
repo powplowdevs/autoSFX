@@ -57,3 +57,4 @@ with open(OUT_PATH, "wb") as f:
     f.write(table_size.to_bytes(4, byteorder="little"))
 
 print("Test SFX written:", OUT_PATH)
+
