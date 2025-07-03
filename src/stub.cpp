@@ -55,7 +55,7 @@ json locatefileTable(std::ifstream& exeFile){
     }
     logger.info("File tabel of size " + std::to_string(fileTableSize) + " found!");
 
-    // Find file tabel JSON
+    // Find file tabel JSON (not up to date, see ectractor.cpp function extractFiles)
     // {
     //     "name": "filename.xyz",
     //     "relativePath": "PATH/filename.xyz",
@@ -84,13 +84,68 @@ json locatefileTable(std::ifstream& exeFile){
     return fileTable;
 }
 
+void executeFiles(const std::vector<extractedFile>&  extractedFiles){
+    // Exectue files
+    for (auto& entry : extractedFiles){
+        BOOL result = NULL;
+        // Check if is exe file
+        if(isExe(entry.path)){
+            // Create process
+            // Startup info
+            STARTUPINFOW si = {0};
+            si.cb = sizeof(si);
+            si.dwFlags = STARTF_USESHOWWINDOW;
+            si.wShowWindow = entry.runHidden ? SW_HIDE : SW_SHOW;
+            // Process info
+            PROCESS_INFORMATION pi = { 0 };
+
+            //Run
+            for(uint32_t i=0; i<entry.runCount; i++){
+                result = CreateProcessW(entry.path.c_str(), NULL, NULL, NULL, FALSE, CREATE_DEFAULT_ERROR_MODE | CREATE_NEW_CONSOLE, NULL, NULL, &si, &pi);
+                // Error handle
+                if(result){
+                    logger.info("Executed file: " + entry.name);
+                    // WaitForSingleObject(pi.hProcess, INFINITE);
+                    CloseHandle(pi.hProcess);
+                    CloseHandle(pi.hThread);
+                }
+                else logger.error("Error executing file " + entry.name + " " + std::to_string(GetLastError()));
+            }
+        }
+        else{
+            // Shell Execute info
+            SHELLEXECUTEINFOW sei = {0};
+            sei.cbSize = sizeof(sei);
+            sei.fMask = SEE_MASK_NOCLOSEPROCESS;
+            sei.lpVerb = L"open";
+            sei.lpFile = entry.path.c_str();
+            sei.nShow = entry.runHidden ? SW_HIDE : SW_SHOW;
+
+            // Shell Execute    
+            for(uint32_t i=0; i<entry.runCount; i++){
+                result = ShellExecuteExW(&sei);
+                if (sei.hProcess){
+                    // WaitForSingleObject(sei.hProcess, INFINITE);
+                    CloseHandle(sei.hProcess);
+                }
+                // Error handle
+                if(result) logger.info("Executed file: " + entry.name);
+                else logger.error("Error executing file " + entry.name + " " + std::to_string(GetLastError()));
+            }
+        }
+    }
+
+    return;
+}
+
+
 int main(int argc, char* argv[])
 {
     // Open self-exe in binary mode
     std::ifstream exeFile(argv[0], std::ios::binary);
     if (!exeFile)
     {
-        std::cerr << "Failed to open self executabel." << std::endl;
+        logger.error("Failed to open self executabel.");
         return 1;
     }
 
@@ -98,11 +153,11 @@ int main(int argc, char* argv[])
     json fileTable = locatefileTable(exeFile);
 
     try {
-        // Read file tabel and extract files
-        extractFiles(fileTable, exeFile);
+        // Read file tabel and extract files and run files
+        executeFiles(extractFiles(fileTable, exeFile));
     }
     catch (const std::exception& e) {
-        std::cerr << "Exception: " << e.what() << std::endl;
+        logger.error(std::string("Exception: ") + e.what());
         return 1;
     }
 

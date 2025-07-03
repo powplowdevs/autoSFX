@@ -15,17 +15,20 @@
 
 import os
 import json
+import zlib
 
 STUB_PATH = "./stub.exe"
 STUB_SIZE = os.path.getsize(STUB_PATH)
 
-class file:
-    def __init__(self, path, offset, size, compressed, runHidden, runCount, runIndex):
+class fileObj:
+    def __init__(self, path, offset, size, compressed, compressionLevel, runHidden, runCount, runIndex):
         self.path = path
         self.name = os.path.basename(self.path)
         self.offset = offset
         self.size = size
+        self.sizeCompressed = 0
         self.compressed = compressed
+        self.compressionLevel = compressionLevel
         self.runHidden = runHidden
         self.runCount = runCount
         self.runIndex = runIndex
@@ -36,6 +39,7 @@ class file:
             "relativePath": self.path,
             "offset": self.offset,
             "size": self.size,
+            "sizeCompressed": self.sizeCompressed,
             "compressed": self.compressed,
             "runHidden": self.runHidden,
             "runCount": self.runCount,
@@ -51,25 +55,53 @@ def getFileList():
     while(askingForFiles):
         print(f"File {index}:")
         path = input("[+] Enter file path to pack: ")
-        size = os.path.getsize(path)
-        # TODO COMPRESSION
-        runCount = int(input("[+] Enter how many times this file should run on extract: "))
-        runIndex = int(input("[+] Enter run order (lower runs first): "))
-        runHidden = input("[+] Should the file run hidden (y/n)?: ")
-        runHidden = (runHidden.lower() == "y")
 
-        newFile = file(path, size, curOffset, False, runHidden, runCount, runIndex)
-        fileList.append(newFile)
+        # Validate path
+        if(not os.path.exists(path)): 
+            print("[X] Invalid path")
+            continue
+        # Folder or file logic
+        if(os.path.isdir(path)):
+            size = os.path.getsize(path)
+            isCompressed = input("[+] Compress this file (y/n)?: ")
+            isCompressed = isCompressed.lower() == "y"
+            compressionLevel = None
+            if(isCompressed): compressionLevel = input("[+] Enter your compression level (1-9 larger=more time and less space): ")
+            runCount = int(input("[+] Enter how many times should files in this folder should run on extract: "))
+            runIndex = int(input("[+] Enter run order (lower runs first & in alphabetical order): "))
+            runHidden = input("[+] Should the files run hidden (y/n)?: ")
+            runHidden = runHidden.lower() == "y"
 
-        curOffset += size
+            for file in os.listdir(path):
+                newPath = os.path.join(path, file)
+                newFile = fileObj(newPath, size, curOffset, isCompressed, compressionLevel, runHidden, runCount, runIndex)
+                fileList.append(newFile)
+
+                curOffset += size
+                index += 1
+        else:
+            size = os.path.getsize(path)
+            isCompressed = input("[+] Compress this file (y/n)?: ")
+            isCompressed = isCompressed.lower() == "y"
+            compressionLevel = None
+            if(isCompressed): compressionLevel = input("[+] Enter your compression level (1-9 larger=more time and less space): ")
+            runCount = int(input("[+] Enter how many times this file should run on extract: "))
+            runIndex = int(input("[+] Enter run order (lower runs first): "))
+            runHidden = input("[+] Should the file run hidden (y/n)?: ")
+            runHidden = (runHidden.lower() == "y")
+
+            newFile = fileObj(path, size, curOffset, isCompressed, compressionLevel, runHidden, runCount, runIndex)
+            fileList.append(newFile)
+
+            curOffset += size
+            index += 1
 
         print("\n---------------------")
         done = input("[+] Add another file? (y/n): ")
         if(done == "n" or done == "N"): askingForFiles = False
         print("\n---------------------")
 
-        index += 1
-        
+            
     return fileList
 
 def main():
@@ -80,17 +112,22 @@ def main():
         print("Please enter file information below...")
         fileList = getFileList()
         
-        packedData = b""
-        fileTableDict = [exfile.serialize() for exfile in fileList]
-        fileTable = json.dumps(fileTableDict, indent=4).encode('utf-8')
-        fileTableSize = len(fileTable)
-
         # Fill packed data
         for exfile in fileList:
             file = open(exfile.path, "rb")
             data = file.read()
             file.close()
-            packedData += data
+            # Compression
+            if(exfile.compressed):
+                 data = zlib.compress(data, int(exfile.compressionLevel))
+                 exfile.sizeCompressed = len(data)
+            else:
+                packedData += data
+
+        packedData = b""
+        fileTableDict = [exfile.serialize() for exfile in fileList]
+        fileTable = json.dumps(fileTableDict, indent=4).encode('utf-8')
+        fileTableSize = len(fileTable)
 
         # First write stub.exe data
         file = open(STUB_PATH, "rb")
@@ -98,7 +135,7 @@ def main():
         file.close()
         
         try:
-            outputPath = input("[+] Please enter name for output SFX file (with .exe extension): ")
+            outputPath = input("[+] Please enter name for output SFX file (without .exe extension): ") + ".exe"
             with open(outputPath, "wb") as f:
                 f.write(data)
                 f.write(packedData)
@@ -108,9 +145,6 @@ def main():
             print(f"[✓] Successfully wrote SFX file: {outputPath}")
         except Exception as e:
             print(f"[X] Failed to write SFX file: {e}")
-
-        
-
 
     else: 
         print("invalid response") 
