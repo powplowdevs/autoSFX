@@ -26,7 +26,7 @@ bool isExe(const std::wstring& str){
 }
 
 bool decompressStreamed(std::istream& in, std::ostream& out, size_t compressedSize) {
-    constexpr size_t chunkSize = 16384;
+    const size_t chunkSize = 16384;
 
     std::vector<uint8_t> inBuffer(chunkSize);
     std::vector<uint8_t> outBuffer(chunkSize);
@@ -112,18 +112,23 @@ std::vector<extractedFile> extractFiles(json& fileTable, std::ifstream& exeFile)
         else{
             fileContentBuffer.resize(size);
             exeFile.read(fileContentBuffer.data(), size);
-            std::cout << "not compressed " << compressed << std::endl;
         }
         
 
         logger.info("Found file bytes: " + name);
 
         // Write file bytes to file
-        // TODO extract files to temp folder
-        std::filesystem::path baseName = path;
-        std::ofstream outFile(baseName.filename(), std::ios::binary);
-        outFile.write(fileContentBuffer.data(), size);
+        std::filesystem::path tempDir = std::filesystem::temp_directory_path() / "ASFX_EXTRC";
+        std::filesystem::create_directories(tempDir);
+
+        std::filesystem::path baseName = std::filesystem::path(path).filename();
+        std::filesystem::path outputPath = tempDir / baseName;
+
+        std::ofstream outFile(outputPath, std::ios::binary);
+        outFile.write(fileContentBuffer.data(), fileContentBuffer.size());
         outFile.close();
+
+        file.path = outputPath.wstring();
 
         logger.info("Extracted file: " + name);
     }

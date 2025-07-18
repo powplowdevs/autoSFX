@@ -74,7 +74,7 @@ def getFileList():
 
             for file in os.listdir(path):
                 newPath = os.path.join(path, file)
-                newFile = fileObj(newPath, size, curOffset, isCompressed, compressionLevel, runHidden, runCount, runIndex)
+                newFile = fileObj(newPath, 0, 0, isCompressed, compressionLevel, runHidden, runCount, runIndex)
                 fileList.append(newFile)
 
                 curOffset += size
@@ -90,7 +90,7 @@ def getFileList():
             runHidden = input("[+] Should the file run hidden (y/n)?: ")
             runHidden = (runHidden.lower() == "y")
 
-            newFile = fileObj(path, size, curOffset, isCompressed, compressionLevel, runHidden, runCount, runIndex)
+            newFile = fileObj(path, 0, 0, isCompressed, compressionLevel, runHidden, runCount, runIndex)
             fileList.append(newFile)
 
             curOffset += size
@@ -112,19 +112,28 @@ def main():
         print("Please enter file information below...")
         fileList = getFileList()
         
+        packedData = b""
+        curOffset = STUB_SIZE
+
         # Fill packed data
         for exfile in fileList:
             file = open(exfile.path, "rb")
             data = file.read()
+            exfile.size = len(data)
             file.close()
             # Compression
-            if(exfile.compressed):
-                 data = zlib.compress(data, int(exfile.compressionLevel))
-                 exfile.sizeCompressed = len(data)
+            if exfile.compressed:
+                compressed = zlib.compress(data, int(exfile.compressionLevel))
+                exfile.sizeCompressed = len(compressed)
+                exfile.offset = curOffset
+                packedData += compressed
+                curOffset += len(compressed)
             else:
+                exfile.offset = curOffset
                 packedData += data
-
-        packedData = b""
+                curOffset += len(data)
+      
+        
         fileTableDict = [exfile.serialize() for exfile in fileList]
         fileTable = json.dumps(fileTableDict, indent=4).encode('utf-8')
         fileTableSize = len(fileTable)
